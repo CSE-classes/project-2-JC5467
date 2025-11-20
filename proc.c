@@ -7,6 +7,7 @@
 #include "proc.h"
 #include "spinlock.h"
 
+
 int page_allocator_type = 0;   // CS 3320 project 2
 
 struct {
