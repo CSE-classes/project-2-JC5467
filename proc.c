@@ -110,47 +110,38 @@ userinit(void)
 int growproc(int n)
 {
   uint sz;
-  struct proc *curproc = copyproc();
+  struct proc *curproc = myproc();
   
   sz = curproc->sz;
-
-  if (page_allocator_type == 1)
-  {
-    if (n > 0)
-    {
-      curproc -> sz = sz + n;
-    }
-    else if (n < 0)
-    {
-      if ((sz = deallocuvm(curproc -> pgdir, sz, sz + n)) == 0)
-      {
+  
+  if(page_allocator_type == 1) {  // LAZY mode
+    if(n > 0) {
+      // Lazy allocation: just increase size, don't allocate pages yet
+      curproc->sz = sz + n;
+    } else if(n < 0) {
+      // Shrinking: still need to deallocate immediately
+      if((sz = deallocuvm(curproc->pgdir, sz, sz + n)) == 0) {
         cprintf("Deallocating pages failed!\n");
         return -1;
       }
-      curproc -> sz = sz;
-
-    } 
-
-  } else 
-  {
-    if(n > 0)
-    {
-      if((sz = allocuvm(curproc->pgdir, sz, sz + n)) == 0)
-      {
-      cprintf("Allocating pages failed!\n");
-      return -1;
+      curproc->sz = sz;
+    }
+  } else {  // DEFAULT mode
+    if(n > 0) {
+      if((sz = allocuvm(curproc->pgdir, sz, sz + n)) == 0) {
+        cprintf("Allocating pages failed!\n");
+        return -1;
       }
-
-    }else if(n < 0)
-    {
-      if (( sz = deallocuvm( curproc->pgdir, sz, sz + n )) == 0)
-      {
+      curproc->sz = sz;
+    } else if(n < 0) {
+      if((sz = deallocuvm(curproc->pgdir, sz, sz + n)) == 0) {
         cprintf("Deallocating pages failed!\n");
         return -1;
       }
+      curproc->sz = sz;
     }
-    curproc -> sz = sz;
   }
+  
   switchuvm(curproc);
   return 0;
 
