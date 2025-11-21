@@ -48,11 +48,66 @@ trap(struct trapframe *tf)
  // CS 3320 project 2
  // You might need to change the folloiwng default page fault handling
  // for your project 2
- if(tf->trapno == T_PGFLT){                 // CS 3320 project 2
-    uint faulting_va;                       // CS 3320 project 2
-    faulting_va = rcr2();                   // CS 3320 project 2
-    cprintf("Unhandled page fault for va:0x%x!\n", faulting_va);     // CS 3320 project 2
- }
+   if(tf->trapno == T_PGFLT)
+   {                                           // CS 3320 project 2
+      uint faulting_va;                       // CS 3320 project 2
+      faulting_va = rcr2();                   // CS 3320 project 2
+      extern int page_allocator_type;
+      int mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm);
+
+
+      if(page_allocator_type == 1) 
+      {
+        struct proc *curproc = myproc();
+        char *mem;
+        uint page_va;
+      
+        // Round down to page boundary
+        page_va = PGROUNDDOWN(faulting_va);
+      
+        // Validate: is this address in the valid lazy-allocated region?
+        // Must be below process size but above the actual allocated memory
+        if(faulting_va >= curproc->sz) 
+        {
+          // Address is beyond process size - invalid access
+          cprintf("pid %d %s: trap %d err %d on cpu %d " "eip 0x%x addr 0x%x--kill proc\n", curproc->pid, curproc->name, tf->trapno, tf->err, cpuid(), tf->eip, faulting_va);
+          curproc->killed = 1;
+        } else {
+        // Valid lazy allocation - allocate the page now
+        mem = kalloc();
+        if(mem == 0) {
+          // Out of memory
+          cprintf("lazy allocation: out of memory\n");
+          curproc->killed = 1;
+        } else {
+          // Clear the page
+          memset(mem, 0, PGSIZE);
+          
+          // Map the page into the page table
+          if(mappages(curproc->pgdir, (char*)page_va, PGSIZE, 
+                      V2P(mem), PTE_W|PTE_U) < 0) {
+            cprintf("lazy allocation: mappages failed\n");
+            kfree(mem);
+            curproc->killed = 1;
+          }
+          // Success - page fault handled, execution will continue
+        }
+      }
+      
+      if(curproc->killed) {
+        exit();
+      }
+      return;
+    } else {
+      // Default mode - print error and kill process
+      cprintf("Unhandled page fault for va:0x%x\n", faulting_va);  // CS
+    }
+
+   
+
+
+    
+  }
 
 
   switch(tf->trapno){
