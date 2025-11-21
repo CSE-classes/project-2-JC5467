@@ -110,7 +110,7 @@ userinit(void)
 int growproc(int n)
 {
   uint sz;
-  struct proc *curproc = myproc();
+  struct proc *curproc = copyproc();
   
   sz = curproc->sz;
 
