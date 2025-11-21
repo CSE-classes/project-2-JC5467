@@ -112,7 +112,7 @@ int growproc(int n)
   uint sz;
   struct proc *curproc = myproc();
   
-  sz = proc->sz;
+  sz = curproc->sz;
 
   if (page_allocator_type == 1)
   {
