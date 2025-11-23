@@ -110,38 +110,34 @@ userinit(void)
 int growproc(int n)
 {
   uint sz;
-  struct proc *curproc = proc;
-  
+  struct proc *curproc = proc;   // current process
+
   sz = curproc->sz;
-  
-  if(page_allocator_type == 1) {  // LAZY mode
-    if(n > 0) {
-      // Lazy allocation: just increase size, don't allocate pages yet
-      curproc->sz = sz + n;
-    } else if(n < 0) {
-      // Shrinking: still need to deallocate immediately
-      if((sz = deallocuvm(curproc->pgdir, sz, sz + n)) == 0) {
-        cprintf("Deallocating pages failed!\n");
+
+  if(page_allocator_type == 1){   // LAZY allocator
+    if(n > 0){
+      // LAZY: just increase virtual size, do NOT call allocuvm
+      if(sz + n >= KERNBASE)      // safety check
         return -1;
-      }
+      curproc->sz = sz + n;
+    } else if(n < 0){
+      // shrinking is the same as default: free physical pages
+      if((sz = deallocuvm(curproc->pgdir, sz, sz + n)) == 0)
+        return -1;
       curproc->sz = sz;
     }
-  } else {  // DEFAULT mode
-    if(n > 0) {
-      if((sz = allocuvm(curproc->pgdir, sz, sz + n)) == 0) {
-        cprintf("Allocating pages failed!\n");
+  } else {                        // DEFAULT allocator
+    if(n > 0){
+      if((sz = allocuvm(curproc->pgdir, sz, sz + n)) == 0)
         return -1;
-      }
       curproc->sz = sz;
-    } else if(n < 0) {
-      if((sz = deallocuvm(curproc->pgdir, sz, sz + n)) == 0) {
-        cprintf("Deallocating pages failed!\n");
+    } else if(n < 0){
+      if((sz = deallocuvm(curproc->pgdir, sz, sz + n)) == 0)
         return -1;
-      }
       curproc->sz = sz;
     }
   }
-  
+
   switchuvm(curproc);
   return 0;
 
