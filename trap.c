@@ -13,6 +13,8 @@ struct gatedesc idt[256];
 extern uint vectors[];  // in vectors.S: array of 256 entry pointers
 struct spinlock tickslock;
 uint ticks;
+extern int page_allocator_type;
+int mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm);
 
 void
 tvinit(void)
@@ -45,69 +47,71 @@ trap(struct trapframe *tf)
       exit();
     return;
   }
+  
  // CS 3320 project 2
  // You might need to change the folloiwng default page fault handling
  // for your project 2
    if(tf->trapno == T_PGFLT)
-   {                                           // CS 3320 project 2
-      uint faulting_va;                       // CS 3320 project 2
-      faulting_va = rcr2();                   // CS 3320 project 2
-      extern int page_allocator_type;
-      int mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm);
+   {
+    uint faulting_va = rcr2();
 
+    // Only do special handling in LAZY allocator mode
+    if(page_allocator_type == 1)
+    {
+      struct proc *curproc = myproc();
 
-      if(page_allocator_type == 1) 
+      // Make sure there is a current process and this is a user trap
+      if(curproc && (tf->cs & 3) == DPL_USER)
       {
-        struct proc *curproc = myproc();
+        uint page_va = PGROUNDDOWN(faulting_va);
         char *mem;
-        uint page_va;
-      
-        // Round down to page boundary
-        page_va = PGROUNDDOWN(faulting_va);
-      
-        // Validate: is this address in the valid lazy-allocated region?
-        // Must be below process size but above the actual allocated memory
-        if(faulting_va >= curproc->sz) 
+
+        // Valid lazy-heap access must be below the process size
+        if(faulting_va < curproc->sz)
         {
-          // Address is beyond process size - invalid access
-          cprintf("pid %d %s: trap %d err %d on cpu %d " "eip 0x%x addr 0x%x--kill proc\n", curproc->pid, curproc->name, tf->trapno, tf->err, cpuid(), tf->eip, faulting_va);
-          curproc->killed = 1;
-        } else {
-        // Valid lazy allocation - allocate the page now
-        mem = kalloc();
-        if(mem == 0) {
-          // Out of memory
-          cprintf("lazy allocation: out of memory\n");
-          curproc->killed = 1;
-        } else {
-          // Clear the page
-          memset(mem, 0, PGSIZE);
-          
-          // Map the page into the page table
-          if(mappages(curproc->pgdir, (char*)page_va, PGSIZE, 
-                      V2P(mem), PTE_W|PTE_U) < 0) {
-            cprintf("lazy allocation: mappages failed\n");
-            kfree(mem);
+          mem = kalloc();
+          if(mem == 0)
+          {
+            // Out of memory
+            cprintf("lazy allocation: out of memory\n");
             curproc->killed = 1;
+          } else
+           {
+            // Clear the page and map it
+            memset(mem, 0, PGSIZE);
+            if(mappages(curproc->pgdir, (char*)page_va,
+                        PGSIZE, V2P(mem), PTE_W|PTE_U) < 0){
+              cprintf("lazy allocation: mappages failed\n");
+              kfree(mem);
+              curproc->killed = 1;
+            } else {
+              // Successfully handled the lazy page fault
+              if(curproc->killed && (tf->cs & 3) == DPL_USER)
+                exit();
+              return;      // IMPORTANT: do not fall through to normal handler
+            }
           }
-          // Success - page fault handled, execution will continue
         }
+        // If faulting_va >= curproc->sz, it's an invalid access;
+        // we just fall through and let the normal trap code kill the process.
       }
-      
-      if(curproc->killed) {
-        exit();
-      }
-      return;
-    } else {
-      // Default mode - print error and kill process
-      cprintf("Unhandled page fault for va:0x%x\n", faulting_va);  // CS
     }
 
-   
-
-
-    
+    // If we get here, either:
+    //  - we're not in lazy mode, or
+    //  - the fault wasn't a valid lazy-heap access, or
+    //  - allocation failed.
+    // In all of those cases, we fall through and let the normal
+    // xv6 trap handling decide what to do (usually kill the process).
   }
+
+  // --------- KEEP THE REST OF YOUR ORIGINAL trap() HERE ---------
+  //switch(tf->trapno) { ... timer/ide/keyboard/etc ... }
+  //if(proc == 0 || (tf->cs&3) == 0) { panic(...) }
+  // proc->killed = 1;
+  // if(proc && proc->killed && (tf->cs&3) == DPL_USER) exit();
+  // ...
+
 
 
   switch(tf->trapno){
