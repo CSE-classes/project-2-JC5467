@@ -7,7 +7,7 @@
 #include "proc.h"
 #include "spinlock.h"
 
-
+extern struct proc* myproc(void);
 int page_allocator_type = 1;   // CS 3320 project 2
 
 struct {
