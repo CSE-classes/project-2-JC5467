@@ -7,7 +7,7 @@
 #include "proc.h"
 #include "spinlock.h"
 
-extern struct proc* myproc(void);
+
 int page_allocator_type = 1;   // CS 3320 project 2
 
 struct {
@@ -110,7 +110,7 @@ userinit(void)
 int growproc(int n)
 {
   uint sz;
-  struct proc *curproc = myproc();
+  struct proc *curproc = proc;
   
   sz = curproc->sz;
   

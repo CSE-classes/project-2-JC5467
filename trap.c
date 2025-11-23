@@ -13,7 +13,6 @@ struct gatedesc idt[256];
 extern uint vectors[];  // in vectors.S: array of 256 entry pointers
 struct spinlock tickslock;
 uint ticks;
-extern struct proc* myproc(void);
 extern int page_allocator_type;
 int mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm);
 
@@ -59,7 +58,7 @@ trap(struct trapframe *tf)
     // Only do special handling in LAZY allocator mode
     if(page_allocator_type == 1)
     {
-      struct proc *curproc = myproc();
+      struct proc *curproc = proc;
 
       // Make sure there is a current process and this is a user trap
       if(curproc && (tf->cs & 3) == DPL_USER)
