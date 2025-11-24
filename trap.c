@@ -9,13 +9,13 @@
 #include "spinlock.h"
 
 // Interrupt descriptor table (shared by all CPUs).
+extern int page_allocator_type;
+int mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm);
 struct gatedesc idt[256];
 extern uint vectors[];  // in vectors.S: array of 256 entry pointers
 struct spinlock tickslock;
 uint ticks;
-extern struct proc *proc;
-extern int page_allocator_type;
-int mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm);
+
 
 void
 tvinit(void)
@@ -47,64 +47,52 @@ trap(struct trapframe *tf)
     if(proc->killed)
       exit();
     return;
+    
   }
   
  // CS 3320 project 2
  // You might need to change the folloiwng default page fault handling
  // for your project 2
-   if(tf->trapno == T_PGFLT)
-   {
-    uint faulting_va = rcr2();
+  if(tf->trapno == T_PGFLT)
+  {                 // CS 3320 project 2
+    uint fault_va = rcr2(); 
+    uint va = PGROUNDDOWN(fault_va); 
+    
+     // Lazy allocator active AND fault is in valid user heap region
+    if(proc != 0 &&
+       page_allocator_type == 1 &&
+       va < proc->sz &&
+       va >= PGSIZE &&         // do not map page 0
+       va < KERNBASE){         // must be in user space
 
-    // Only do special handling in LAZY allocator mode
-    if(page_allocator_type == 1)
-    {
-      struct proc *curproc = proc;
-
-      // Make sure there is a current process and this is a user trap
-      if(curproc && (tf->cs & 3) == DPL_USER)
-      {
-        uint page_va = PGROUNDDOWN(faulting_va);
-        char *mem;
-
-        // Valid lazy-heap access must be below the process size
-        if(faulting_va < curproc->sz)
-        {
-          mem = kalloc();
-          if(mem == 0)
-          {
-            // Out of memory
-            cprintf("lazy allocation: out of memory\n");
-            curproc->killed = 1;
-          } else
-           {
-            // Clear the page and map it
-            memset(mem, 0, PGSIZE);
-            if(mappages(curproc->pgdir, (char*)page_va,
-                        PGSIZE, V2P(mem), PTE_W|PTE_U) < 0){
-              cprintf("lazy allocation: mappages failed\n");
-              kfree(mem);
-              curproc->killed = 1;
-            } else {
-              // Successfully handled the lazy page fault
-              if(curproc->killed && (tf->cs & 3) == DPL_USER)
-                exit();
-              return;      // IMPORTANT: do not fall through to normal handler
-            }
-          }
+        char *mem = kalloc();
+        if(mem == 0){
+            cprintf("lazy alloc: kalloc failed\n");
+            proc->killed = 1;
+            return;
         }
-        // If faulting_va >= curproc->sz, it's an invalid access;
-        // we just fall through and let the normal trap code kill the process.
-      }
+
+        memset(mem, 0, PGSIZE);
+
+        if(mappages(proc->pgdir, (void*)va, PGSIZE, V2P(mem), PTE_W|PTE_U) < 0){
+            cprintf("lazy alloc: mappages failed\n");
+            kfree(mem);
+            proc->killed = 1;
+            return;
+        }
+
+        // Successful lazy allocation — return to user program
+        return;
     }
 
-    // If we get here, either:
-    //  - we're not in lazy mode, or
-    //  - the fault wasn't a valid lazy-heap access, or
-    //  - allocation failed.
-    // In all of those cases, we fall through and let the normal
-    // xv6 trap handling decide what to do (usually kill the process).
+    // If we reach here → lazy allocator not active OR invalid address
+    cprintf("Unhandled page fault for VA: 0x%x (pid %d)\n",
+            fault_va, proc ? proc->pid : -1);
+    if(proc) proc->killed = 1;
+                       
+   
   }
+  
 
  
   switch(tf->trapno){

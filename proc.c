@@ -110,37 +110,40 @@ userinit(void)
 int growproc(int n)
 {
   uint sz;
-  struct proc *curproc = proc;   // current process
 
-  sz = curproc->sz;
+  sz = proc->sz;
 
-  if(page_allocator_type == 0){   // LAZY allocator
-    if(n > 0){
-      // LAZY: just increase virtual size, do NOT call allocuvm
-      if(sz + n >= KERNBASE)      // safety check
+  if(n > 0){
+    // -------- GROWING HEAP --------
+    if(page_allocator_type == 0){
+      // DEFAULT allocator: same behavior as original xv6
+      if((sz = allocuvm(proc->pgdir, sz, sz + n)) == 0){
+        cprintf("Allocating pages failed!\n"); // CS3320: project 2
         return -1;
-      curproc->sz = sz + n;
-    } else if(n < 0){
-      // shrinking is the same as default: free physical pages
-      if((sz = deallocuvm(curproc->pgdir, sz, sz + n)) == 0)
+      }
+    } else {
+      // LAZY allocator: do NOT allocate physical pages here
+      // Only increase the virtual size; pages will be allocated on page fault.
+      if(sz + n >= KERNBASE || sz + n < sz){
+        cprintf("Lazy growproc: address space overflow\n");
         return -1;
-      curproc->sz = sz;
+      }
+      sz += n;
     }
-  } else {                        // DEFAULT allocator
-    if(n > 0){
-      if((sz = allocuvm(curproc->pgdir, sz, sz + n)) == 0)
-        return -1;
-      curproc->sz = sz;
-    } else if(n < 0){
-      if((sz = deallocuvm(curproc->pgdir, sz, sz + n)) == 0)
-        return -1;
-      curproc->sz = sz;
+
+  } else if(n < 0){
+    // -------- SHRINKING HEAP --------
+    // When shrinking, we always actually free pages, regardless of allocator type.
+    if((sz = deallocuvm(proc->pgdir, sz, sz + n)) == 0){
+      cprintf("Deallocating pages failed!\n"); // CS3320: project 2
+      return -1;
     }
   }
 
-  switchuvm(curproc);
+  proc->sz = sz;
+  switchuvm(proc);
   return 0;
-
+  
 
   
 }
