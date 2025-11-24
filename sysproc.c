@@ -108,7 +108,7 @@ int sys_set_page_allocator(void)
   }
     // please remove the following 
     // when you start implementing your page allocator
-   
+  return 0;  
 }
 
 // CS 3320 shared memory
