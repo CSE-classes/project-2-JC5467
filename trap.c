@@ -86,8 +86,7 @@ trap(struct trapframe *tf)
     }
 
     // If we reach here → lazy allocator not active OR invalid address
-    cprintf("Unhandled page fault for VA: 0x%x (pid %d)\n",
-            fault_va, proc ? proc->pid : -1);
+    cprintf("Unhandled page fault!\n", fault_va, proc ? proc->pid : -1);
     if(proc) proc->killed = 1;
                        
    

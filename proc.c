@@ -125,7 +125,7 @@ int growproc(int n)
       // LAZY allocator: do NOT allocate physical pages here
       // Only increase the virtual size; pages will be allocated on page fault.
       if(sz + n >= KERNBASE || sz + n < sz){
-        cprintf("Lazy growproc: address space overflow\n");
+        cprintf("Allocating pages failed!\n");
         return -1;
       }
       sz += n;
