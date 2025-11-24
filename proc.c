@@ -8,7 +8,7 @@
 #include "spinlock.h"
 
 
-extern int page_allocator_type;   // CS 3320 project 2
+int page_allocator_type = 1;   // CS 3320 project 2
 
 struct {
   struct spinlock lock;
