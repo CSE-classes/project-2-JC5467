@@ -114,7 +114,7 @@ int growproc(int n)
 
   sz = curproc->sz;
 
-  if(page_allocator_type == 1){   // LAZY allocator
+  if(page_allocator_type == 0){   // LAZY allocator
     if(n > 0){
       // LAZY: just increase virtual size, do NOT call allocuvm
       if(sz + n >= KERNBASE)      // safety check
