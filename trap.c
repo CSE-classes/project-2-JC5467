@@ -105,15 +105,7 @@ trap(struct trapframe *tf)
     // xv6 trap handling decide what to do (usually kill the process).
   }
 
-  // --------- KEEP THE REST OF YOUR ORIGINAL trap() HERE ---------
-  //switch(tf->trapno) { ... timer/ide/keyboard/etc ... }
-  //if(proc == 0 || (tf->cs&3) == 0) { panic(...) }
-  // proc->killed = 1;
-  // if(proc && proc->killed && (tf->cs&3) == DPL_USER) exit();
-  // ...
-
-
-
+ 
   switch(tf->trapno){
   case T_IRQ0 + IRQ_TIMER:
     if(cpu->id == 0){
