@@ -1,0 +1,21 @@
+Jeremy Chavez  
+ID# 1002264984
+
+Description of implementation
+
+- Default page allocator: fully working and matches the sample output.
+- Lazy page allocator: fully implemented and passes all proj2_test tests (0 and 1).
+- No known bugs based on the provided test program and some extra manual testing.
+
+1. growproc() – Added a conditional path using page_allocator_type:
+   - Default mode (0): uses allocuvm() exactly as in original xv6.
+   - Lazy mode (1): only increases proc->sz without allocating pages.
+
+2. trap() – Added lazy page-fault handling:
+   - On T_PGFLT, if lazy mode is active and the faulting address is inside the user heap, the kernel allocates one page with kalloc(), zeroes it, and maps it with mappages().
+   - Invalid or out-of-range faults behave like original xv6.
+
+3. mappages() – Removed the 'static' keyword in vm.c so trap.c can call it.
+
+
+Testing - The tests match what it says they should be in the project.
