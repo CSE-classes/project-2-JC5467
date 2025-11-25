@@ -113,28 +113,35 @@ int growproc(int n)
 
   sz = proc->sz;
 
-  if(n > 0){
-    // -------- GROWING HEAP --------
-    if(page_allocator_type == 0){
-      // DEFAULT allocator: same behavior as original xv6
-      if((sz = allocuvm(proc->pgdir, sz, sz + n)) == 0){
+  if(n > 0)
+  {
+    // Growing heap
+    if(page_allocator_type == 0)
+    {
+      // same behavior as original xv6
+      if((sz = allocuvm(proc->pgdir, sz, sz + n)) == 0)
+      {
         cprintf("Allocating pages failed!\n"); // CS3320: project 2
         return -1;
       }
-    } else {
-      // LAZY allocator: do NOT allocate physical pages here
-      // Only increase the virtual size; pages will be allocated on page fault.
-      if(sz + n >= KERNBASE || sz + n < sz){
+    } else 
+    {
+      // Only increase the virtual size, pages will be allocated on page fault.
+      if(sz + n >= KERNBASE || sz + n < sz)
+      {
         cprintf("Allocating pages failed!\n");
         return -1;
       }
       sz += n;
     }
 
-  } else if(n < 0){
-    // -------- SHRINKING HEAP --------
-    // When shrinking, we always actually free pages, regardless of allocator type.
-    if((sz = deallocuvm(proc->pgdir, sz, sz + n)) == 0){
+  } else if(n < 0)
+
+  {
+    // Shrinking Heap
+
+    if((sz = deallocuvm(proc->pgdir, sz, sz + n)) == 0)
+    {
       cprintf("Deallocating pages failed!\n"); // CS3320: project 2
       return -1;
     }

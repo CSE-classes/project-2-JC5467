@@ -54,38 +54,36 @@ trap(struct trapframe *tf)
  // You might need to change the folloiwng default page fault handling
  // for your project 2
   if(tf->trapno == T_PGFLT)
-  {                 // CS 3320 project 2
+  {                 
     uint fault_va = rcr2(); 
     uint va = PGROUNDDOWN(fault_va); 
     
-     // Lazy allocator active AND fault is in valid user heap region
-    if(proc != 0 &&
-       page_allocator_type == 1 &&
-       va < proc->sz &&
-       va >= PGSIZE &&         // do not map page 0
-       va < KERNBASE){         // must be in user space
+     // lazy page allocator and address is inside heap range.
+    if(proc != 0 && page_allocator_type == 1 && va < proc->sz && va >= PGSIZE && va < KERNBASE){         // must be in user space
 
-        char *mem = kalloc();
-        if(mem == 0){
-            cprintf("lazy alloc: kalloc failed\n");
-            proc->killed = 1;
-            return;
-        }
-
-        memset(mem, 0, PGSIZE);
-
-        if(mappages(proc->pgdir, (void*)va, PGSIZE, V2P(mem), PTE_W|PTE_U) < 0){
-            cprintf("lazy alloc: mappages failed\n");
-            kfree(mem);
-            proc->killed = 1;
-            return;
-        }
-
-        // Successful lazy allocation — return to user program
+      char *mem = kalloc();
+      if(mem == 0)
+      {
+        cprintf("lazy alloc: kalloc failed\n");
+        proc->killed = 1;
         return;
+      }
+
+      memset(mem, 0, PGSIZE);
+
+      if(mappages(proc->pgdir, (void*)va, PGSIZE, V2P(mem), PTE_W|PTE_U) < 0)
+      {
+        cprintf("lazy alloc: mappages failed\n");
+        kfree(mem);
+        proc->killed = 1;
+        return;
+      }
+
+      //page allocated successfully
+      return;
     }
 
-    // If we reach here → lazy allocator not active OR invalid address
+    // if not handeled above, the its a normal page fault.
     cprintf("Unhandled page fault!\n", fault_va, proc ? proc->pid : -1);
     if(proc) proc->killed = 1;
                        
